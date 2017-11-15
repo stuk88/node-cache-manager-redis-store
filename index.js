@@ -58,11 +58,34 @@ const redisStore = (...args) => {
         }
 
         if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
+          cb = function cb(err, result) {
+            return err ? reject(err) : resolve(result);
+          };
         }
-
-        redisCache.keys(pattern, handleResponse(cb));
-      })
+        
+        
+        var cursor = '0';
+        var results = [];
+        
+        var whileScan = (cb) => {
+            redisCache.scan(cursor,
+            'MATCH', pattern,
+            'COUNT', '1000',
+            function (err, res) {            
+              if (err) return cb(err);
+              
+              cursor = res[0];
+              results = results.concat(res[1]);
+              
+              if(cursor == 0)
+                cb(null, results);
+              else 
+                whileScan(cb);
+             });
+        }  
+        
+        whileScan(handleResponse(cb));
+      });
     ),
     ttl: (key, cb) => redisCache.ttl(key, handleResponse(cb)),
     isCacheableValue: storeArgs.is_cacheable_value || (value => value !== undefined && value !== null),
