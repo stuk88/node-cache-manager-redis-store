@@ -75,28 +75,21 @@ var redisStore = function redisStore() {
             return err ? reject(err) : resolve(result);
           };
         }
-        
-        
+
         var cursor = '0';
         var results = [];
-        
-        var whileScan = (cb) => {
-            redisCache.scan(cursor,
-            'MATCH', pattern,
-            'COUNT', '1000',
-            function (err, res) {            
-              if (err) return cb(err);
-              
-              cursor = res[0];
-              results = results.concat(res[1]);
-              
-              if(cursor == 0)
-                cb(null, results);
-              else 
-                whileScan(cb);
-             });
-        }  
-        
+
+        var whileScan = function whileScan(cb) {
+          redisCache.scan(cursor, 'MATCH', pattern, 'COUNT', '1000', function (err, res) {
+            if (err) return cb(err);
+
+            cursor = res[0];
+            results = results.concat(res[1]);
+
+            if (cursor == 0) cb(null, results);else whileScan(cb);
+          });
+        };
+
         whileScan(handleResponse(cb));
       });
     },
